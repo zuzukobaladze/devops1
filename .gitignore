@@ -1,0 +1,31 @@
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
+
+# Compiled binary addons
+build/
+
+# Local development
+.DS_Store
+.vscode/
+.idea/
+
+# Test results
+test-results/ 

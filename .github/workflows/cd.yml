@@ -1,0 +1,71 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "14"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+  deploy-staging:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Deploy to Heroku Staging
+        uses: akhileshns/heroku-deploy@v3.12.12
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: ${{secrets.HEROKU_APP_NAME}}-staging
+          heroku_email: ${{secrets.HEROKU_EMAIL}}
+
+      - name: Wait for deployment and run smoke tests
+        run: |
+          sleep 10
+          echo "Running smoke tests on staging environment"
+          curl -f https://${{secrets.HEROKU_APP_NAME}}-staging.herokuapp.com/health || exit 1
+
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Deploy to Heroku Production with 10% traffic (Canary)
+        uses: akhileshns/heroku-deploy@v3.12.12
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: ${{secrets.HEROKU_APP_NAME}}-canary
+          heroku_email: ${{secrets.HEROKU_EMAIL}}
+
+      - name: Wait and run canary tests
+        run: |
+          sleep 10
+          echo "Running tests on canary environment"
+          curl -f https://${{secrets.HEROKU_APP_NAME}}-canary.herokuapp.com/health || exit 1
+
+      - name: Deploy to Heroku Production (Full)
+        if: success()
+        uses: akhileshns/heroku-deploy@v3.12.12
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: ${{secrets.HEROKU_APP_NAME}}
+          heroku_email: ${{secrets.HEROKU_EMAIL}}
